@@ -1,8 +1,36 @@
 <?php
 
-use Illuminate\Http\Request;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\ProjectController;
+use App\Http\Controllers\Api\ProjectMemberController;
+use App\Http\Controllers\Api\WorkspaceController;
+use App\Http\Controllers\Api\WorkspaceMemberController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink']);
+Route::post('/reset-password', [PasswordResetController::class, 'reset']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
+
+    Route::get('/user', [ProfileController::class, 'show']);
+    Route::put('/user/profile', [ProfileController::class, 'update']);
+    Route::put('/user/password', [ProfileController::class, 'updatePassword']);
+
+    Route::apiResource('workspaces', WorkspaceController::class)->except(['create', 'edit']);
+
+    Route::get('/workspaces/{workspace}/members', [WorkspaceMemberController::class, 'index']);
+    Route::post('/workspaces/{workspace}/members', [WorkspaceMemberController::class, 'store']);
+    Route::patch('/workspaces/{workspace}/members/{member}', [WorkspaceMemberController::class, 'update']);
+    Route::delete('/workspaces/{workspace}/members/{member}', [WorkspaceMemberController::class, 'destroy']);
+
+    Route::apiResource('workspaces.projects', ProjectController::class)->except(['create', 'edit']);
+
+    Route::get('/workspaces/{workspace}/projects/{project}/members', [ProjectMemberController::class, 'index']);
+    Route::post('/workspaces/{workspace}/projects/{project}/members', [ProjectMemberController::class, 'store']);
+    Route::delete('/workspaces/{workspace}/projects/{project}/members/{member}', [ProjectMemberController::class, 'destroy']);
+});
