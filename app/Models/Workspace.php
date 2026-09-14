@@ -33,6 +33,11 @@ class Workspace extends Model
         return $this->hasMany(Project::class);
     }
 
+    public function activities(): HasMany
+    {
+        return $this->hasMany(Activity::class);
+    }
+
     public function roleFor(User $user): ?WorkspaceRole
     {
         return $this->members

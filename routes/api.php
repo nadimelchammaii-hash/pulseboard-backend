@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ActivityController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\ProfileController;
@@ -24,6 +25,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/user/password', [ProfileController::class, 'updatePassword']);
 
     Route::apiResource('workspaces', WorkspaceController::class)->except(['create', 'edit']);
+
+    Route::get('/workspaces/{workspace}/activities', [ActivityController::class, 'index']);
 
     Route::get('/workspaces/{workspace}/members', [WorkspaceMemberController::class, 'index']);
     Route::post('/workspaces/{workspace}/members', [WorkspaceMemberController::class, 'store']);

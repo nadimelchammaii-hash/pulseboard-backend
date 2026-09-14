@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\TaskStatus;
+use App\Events\TaskCreated;
+use App\Events\TaskDeleted;
+use App\Events\TaskMoved;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Task\MoveTaskRequest;
 use App\Http\Requests\Task\StoreTaskRequest;
@@ -12,6 +15,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -66,6 +70,8 @@ class TaskController extends Controller
                 'created_by' => $request->user()->id,
             ]);
         });
+
+        event(new TaskCreated($task, $project, $request->user()));
 
         return TaskResource::make($task->load(['assignee', 'creator']))
             ->response()
@@ -140,16 +146,24 @@ class TaskController extends Controller
             }
         });
 
+        if ($oldStatus !== $newStatus) {
+            event(new TaskMoved($task, $project, $request->user(), $oldStatus, $newStatus));
+        }
+
         return TaskResource::make($task->fresh(['assignee', 'creator']));
     }
 
-    public function destroy(Workspace $workspace, Project $project, Task $task): Response
+    public function destroy(Request $request, Workspace $workspace, Project $project, Task $task): Response
     {
         $this->authorizeTaskScope($workspace, $project, $task);
 
         $this->authorize('delete', $task);
 
+        $taskId = $task->id;
+        $taskTitle = $task->title;
         $task->delete();
+
+        event(new TaskDeleted($project, $request->user(), $taskId, $taskTitle));
 
         return response()->noContent();
     }

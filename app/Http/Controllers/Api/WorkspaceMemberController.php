@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\WorkspaceRole;
+use App\Events\WorkspaceMemberInvited;
+use App\Events\WorkspaceMemberRemoved;
+use App\Events\WorkspaceMemberRoleChanged;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workspace\InviteMemberRequest;
 use App\Http\Requests\Workspace\UpdateMemberRoleRequest;
@@ -11,6 +14,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceMember;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -42,10 +46,14 @@ class WorkspaceMemberController extends Controller
             ]);
         }
 
+        $role = WorkspaceRole::from($request->validated('role'));
+
         $member = $workspace->members()->create([
             'user_id' => $invitedUser->id,
-            'role' => WorkspaceRole::from($request->validated('role')),
+            'role' => $role,
         ]);
+
+        event(new WorkspaceMemberInvited($workspace, $request->user(), $invitedUser, $role));
 
         return WorkspaceMemberResource::make($member->load('user'))
             ->response()
@@ -59,6 +67,7 @@ class WorkspaceMemberController extends Controller
 
         $this->authorize('updateMemberRole', [$workspace, $member]);
 
+        $oldRole = $member->role;
         $newRole = WorkspaceRole::from($request->validated('role'));
 
         if ($member->role === WorkspaceRole::Owner && $newRole !== WorkspaceRole::Owner) {
@@ -77,17 +86,24 @@ class WorkspaceMemberController extends Controller
             $member->update(['role' => $newRole]);
         }
 
+        if ($oldRole !== $newRole) {
+            event(new WorkspaceMemberRoleChanged($workspace, $request->user(), $member->user, $oldRole, $newRole));
+        }
+
         return WorkspaceMemberResource::make($member->fresh('user'));
     }
 
-    public function destroy(Workspace $workspace, WorkspaceMember $member): Response
+    public function destroy(Request $request, Workspace $workspace, WorkspaceMember $member): Response
     {
         abort_unless($member->workspace_id === $workspace->id, Response::HTTP_NOT_FOUND);
         $workspace->load('members');
 
         $this->authorize('removeMember', [$workspace, $member]);
 
+        $removedUser = $member->user;
         $member->delete();
+
+        event(new WorkspaceMemberRemoved($workspace, $request->user(), $removedUser));
 
         return response()->noContent();
     }

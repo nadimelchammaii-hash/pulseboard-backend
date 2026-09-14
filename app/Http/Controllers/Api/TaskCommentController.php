@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\TaskCommentAdded;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TaskComment\StoreTaskCommentRequest;
 use App\Http\Resources\TaskCommentResource;
@@ -35,6 +36,8 @@ class TaskCommentController extends Controller
             'user_id' => $request->user()->id,
             'body' => $request->validated('body'),
         ]);
+
+        event(new TaskCommentAdded($comment, $task, $project, $request->user()));
 
         return TaskCommentResource::make($comment->load('user'))
             ->response()

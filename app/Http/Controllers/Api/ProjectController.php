@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\WorkspaceRole;
+use App\Events\ProjectCreated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Project\StoreProjectRequest;
 use App\Http\Requests\Project\UpdateProjectRequest;
@@ -48,6 +49,8 @@ class ProjectController extends Controller
 
             return $project;
         });
+
+        event(new ProjectCreated($project, $request->user()));
 
         return ProjectResource::make($project->load('members'))
             ->response()

@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\ProjectMemberAdded;
+use App\Events\ProjectMemberRemoved;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Project\AddProjectMemberRequest;
 use App\Http\Resources\ProjectMemberResource;
 use App\Models\Project;
 use App\Models\ProjectMember;
+use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
 
@@ -51,12 +55,14 @@ class ProjectMemberController extends Controller
 
         $member = $project->members()->create(['user_id' => $targetUserId]);
 
+        event(new ProjectMemberAdded($project, $request->user(), User::find($targetUserId)));
+
         return ProjectMemberResource::make($member->load('user'))
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
     }
 
-    public function destroy(Workspace $workspace, Project $project, ProjectMember $member): Response
+    public function destroy(Request $request, Workspace $workspace, Project $project, ProjectMember $member): Response
     {
         abort_unless($project->workspace_id === $workspace->id, Response::HTTP_NOT_FOUND);
         abort_unless($member->project_id === $project->id, Response::HTTP_NOT_FOUND);
@@ -64,7 +70,10 @@ class ProjectMemberController extends Controller
 
         $this->authorize('removeMember', [$project, $member]);
 
+        $removedUser = $member->user;
         $member->delete();
+
+        event(new ProjectMemberRemoved($project, $request->user(), $removedUser));
 
         return response()->noContent();
     }
