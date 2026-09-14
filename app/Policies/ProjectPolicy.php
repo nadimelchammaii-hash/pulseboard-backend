@@ -26,11 +26,7 @@ class ProjectPolicy
      */
     public function view(User $user, Project $project): bool
     {
-        if ($this->isWorkspaceManager($user, $project->workspace)) {
-            return true;
-        }
-
-        return $project->members->contains('user_id', $user->id);
+        return $project->isAccessibleBy($user);
     }
 
     /**

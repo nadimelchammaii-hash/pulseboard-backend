@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectMemberController;
+use App\Http\Controllers\Api\TaskCommentController;
+use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\WorkspaceController;
 use App\Http\Controllers\Api\WorkspaceMemberController;
 use Illuminate\Support\Facades\Route;
@@ -33,4 +35,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/workspaces/{workspace}/projects/{project}/members', [ProjectMemberController::class, 'index']);
     Route::post('/workspaces/{workspace}/projects/{project}/members', [ProjectMemberController::class, 'store']);
     Route::delete('/workspaces/{workspace}/projects/{project}/members/{member}', [ProjectMemberController::class, 'destroy']);
+
+    Route::apiResource('workspaces.projects.tasks', TaskController::class)->except(['create', 'edit']);
+    Route::patch('/workspaces/{workspace}/projects/{project}/tasks/{task}/move', [TaskController::class, 'move']);
+
+    Route::get('/workspaces/{workspace}/projects/{project}/tasks/{task}/comments', [TaskCommentController::class, 'index']);
+    Route::post('/workspaces/{workspace}/projects/{project}/tasks/{task}/comments', [TaskCommentController::class, 'store']);
+    Route::delete('/workspaces/{workspace}/projects/{project}/tasks/{task}/comments/{comment}', [TaskCommentController::class, 'destroy']);
 });
