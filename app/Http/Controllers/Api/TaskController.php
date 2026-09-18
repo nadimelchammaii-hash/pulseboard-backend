@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\TaskStatus;
+use App\Events\TaskAssigneeChanged;
 use App\Events\TaskCreated;
 use App\Events\TaskDeleted;
 use App\Events\TaskMoved;
@@ -97,6 +98,8 @@ class TaskController extends Controller
             $this->ensureAssigneeIsProjectMember($project, (int) $request->validated('assignee_id'));
         }
 
+        $oldAssigneeId = $task->assignee_id;
+
         $task->update([
             'title' => $request->validated('title'),
             'description' => $request->validated('description'),
@@ -104,6 +107,10 @@ class TaskController extends Controller
             'assignee_id' => $request->validated('assignee_id'),
             'due_date' => $request->validated('due_date'),
         ]);
+
+        if ($task->assignee_id && $task->assignee_id !== $oldAssigneeId) {
+            event(new TaskAssigneeChanged($task, $project, $request->user(), $task->assignee));
+        }
 
         return TaskResource::make($task->fresh(['assignee', 'creator']));
     }
