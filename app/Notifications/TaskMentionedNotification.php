@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskComment;
 use App\Models\User;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Str;
 
@@ -23,7 +24,7 @@ class TaskMentionedNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', 'broadcast'];
     }
 
     /**
@@ -41,5 +42,16 @@ class TaskMentionedNotification extends Notification
             'mentioner_name' => $this->mentioner->name,
             'comment_excerpt' => Str::limit($this->comment->body, 140),
         ];
+    }
+
+    public function toBroadcast(object $notifiable): BroadcastMessage
+    {
+        return (new BroadcastMessage([
+            'id' => $this->id,
+            'category' => 'mention',
+            'data' => $this->toDatabase($notifiable),
+            'read_at' => null,
+            'created_at' => now()->toISOString(),
+        ]))->onConnection('sync');
     }
 }

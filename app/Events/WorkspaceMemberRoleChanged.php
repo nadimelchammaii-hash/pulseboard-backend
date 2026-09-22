@@ -7,9 +7,15 @@ use App\Enums\ActivityAction;
 use App\Enums\WorkspaceRole;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 
-class WorkspaceMemberRoleChanged implements ActivityLoggable
+class WorkspaceMemberRoleChanged implements ActivityLoggable, ShouldBroadcastNow
 {
+    use InteractsWithSockets;
+
     public function __construct(
         public readonly Workspace $workspace,
         public readonly User $causer,
@@ -31,6 +37,33 @@ class WorkspaceMemberRoleChanged implements ActivityLoggable
                 'old_role' => $this->oldRole->value,
                 'new_role' => $this->newRole->value,
             ],
+        ];
+    }
+
+    /**
+     * @return array<int, Channel>
+     */
+    public function broadcastOn(): array
+    {
+        return [new PrivateChannel("workspace.{$this->workspace->id}")];
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'workspace.member_role_changed';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function broadcastWith(): array
+    {
+        return [
+            'action' => ActivityAction::WorkspaceMemberRoleChanged->value,
+            'causer' => ['id' => $this->causer->id, 'name' => $this->causer->name, 'email' => $this->causer->email],
+            'project' => null,
+            'data' => $this->toActivityLog()['data'],
+            'created_at' => now()->toISOString(),
         ];
     }
 }

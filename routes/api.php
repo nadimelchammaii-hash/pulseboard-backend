@@ -11,7 +11,11 @@ use App\Http\Controllers\Api\TaskCommentController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\WorkspaceController;
 use App\Http\Controllers\Api\WorkspaceMemberController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
+
+require __DIR__.'/channels.php';
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -20,6 +24,8 @@ Route::post('/reset-password', [PasswordResetController::class, 'reset']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    Route::post('/broadcasting/auth', fn (Request $request) => Broadcast::auth($request));
 
     Route::get('/user', [ProfileController::class, 'show']);
     Route::put('/user/profile', [ProfileController::class, 'update']);

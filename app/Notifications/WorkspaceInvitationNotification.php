@@ -5,6 +5,7 @@ namespace App\Notifications;
 use App\Enums\WorkspaceRole;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
 
 class WorkspaceInvitationNotification extends Notification
@@ -20,7 +21,7 @@ class WorkspaceInvitationNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', 'broadcast'];
     }
 
     /**
@@ -35,5 +36,16 @@ class WorkspaceInvitationNotification extends Notification
             'inviter_name' => $this->inviter->name,
             'role' => $this->role->value,
         ];
+    }
+
+    public function toBroadcast(object $notifiable): BroadcastMessage
+    {
+        return (new BroadcastMessage([
+            'id' => $this->id,
+            'category' => 'system',
+            'data' => $this->toDatabase($notifiable),
+            'read_at' => null,
+            'created_at' => now()->toISOString(),
+        ]))->onConnection('sync');
     }
 }
