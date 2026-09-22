@@ -5,12 +5,19 @@ namespace App\Events;
 use App\Contracts\ActivityLoggable;
 use App\Enums\ActivityAction;
 use App\Enums\TaskStatus;
+use App\Http\Resources\TaskResource;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 
-class TaskMoved implements ActivityLoggable
+class TaskMoved implements ActivityLoggable, ShouldBroadcastNow
 {
+    use InteractsWithSockets;
+
     public function __construct(
         public readonly Task $task,
         public readonly Project $project,
@@ -33,6 +40,31 @@ class TaskMoved implements ActivityLoggable
                 'from_status' => $this->fromStatus->value,
                 'to_status' => $this->toStatus->value,
             ],
+        ];
+    }
+
+    /**
+     * @return array<int, Channel>
+     */
+    public function broadcastOn(): array
+    {
+        return [new PrivateChannel("project.{$this->project->id}")];
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'task.moved';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function broadcastWith(): array
+    {
+        return [
+            'task' => TaskResource::make($this->task->load(['assignee', 'creator']))->resolve(),
+            'from_status' => $this->fromStatus->value,
+            'to_status' => $this->toStatus->value,
         ];
     }
 }

@@ -4,12 +4,19 @@ namespace App\Events;
 
 use App\Contracts\ActivityLoggable;
 use App\Enums\ActivityAction;
+use App\Http\Resources\TaskResource;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 
-class TaskCreated implements ActivityLoggable
+class TaskCreated implements ActivityLoggable, ShouldBroadcastNow
 {
+    use InteractsWithSockets;
+
     public function __construct(
         public readonly Task $task,
         public readonly Project $project,
@@ -28,6 +35,29 @@ class TaskCreated implements ActivityLoggable
             'data' => [
                 'task_title' => $this->task->title,
             ],
+        ];
+    }
+
+    /**
+     * @return array<int, Channel>
+     */
+    public function broadcastOn(): array
+    {
+        return [new PrivateChannel("project.{$this->project->id}")];
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'task.created';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function broadcastWith(): array
+    {
+        return [
+            'task' => TaskResource::make($this->task->load(['assignee', 'creator']))->resolve(),
         ];
     }
 }

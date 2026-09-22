@@ -4,14 +4,21 @@ namespace App\Events;
 
 use App\Contracts\ActivityLoggable;
 use App\Enums\ActivityAction;
+use App\Http\Resources\TaskCommentResource;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskComment;
 use App\Models\User;
+use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Support\Str;
 
-class TaskCommentAdded implements ActivityLoggable
+class TaskCommentAdded implements ActivityLoggable, ShouldBroadcastNow
 {
+    use InteractsWithSockets;
+
     public function __construct(
         public readonly TaskComment $comment,
         public readonly Task $task,
@@ -33,6 +40,30 @@ class TaskCommentAdded implements ActivityLoggable
                 'task_title' => $this->task->title,
                 'comment_excerpt' => Str::limit($this->comment->body, 140),
             ],
+        ];
+    }
+
+    /**
+     * @return array<int, Channel>
+     */
+    public function broadcastOn(): array
+    {
+        return [new PrivateChannel("project.{$this->project->id}")];
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'task_comment.added';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function broadcastWith(): array
+    {
+        return [
+            'task_id' => $this->task->id,
+            'comment' => TaskCommentResource::make($this->comment->load('user'))->resolve(),
         ];
     }
 }

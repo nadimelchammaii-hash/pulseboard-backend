@@ -7,9 +7,15 @@ use App\Enums\ActivityAction;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 
-class TaskDeleted implements ActivityLoggable
+class TaskDeleted implements ActivityLoggable, ShouldBroadcastNow
 {
+    use InteractsWithSockets;
+
     public function __construct(
         public readonly Project $project,
         public readonly User $causer,
@@ -29,6 +35,29 @@ class TaskDeleted implements ActivityLoggable
             'data' => [
                 'task_title' => $this->taskTitle,
             ],
+        ];
+    }
+
+    /**
+     * @return array<int, Channel>
+     */
+    public function broadcastOn(): array
+    {
+        return [new PrivateChannel("project.{$this->project->id}")];
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'task.deleted';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function broadcastWith(): array
+    {
+        return [
+            'task_id' => $this->taskId,
         ];
     }
 }
