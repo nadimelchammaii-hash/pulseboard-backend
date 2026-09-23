@@ -181,6 +181,20 @@ test('a user can mark all notifications as read', function () {
     expect($member->unreadNotifications()->count())->toBe(0);
 });
 
+test('a page beyond the last one returns an empty list, not an error', function () {
+    ['owner' => $owner, 'member' => $member, 'workspace' => $workspace, 'project' => $project] = workspaceWithTwoMembers();
+
+    $this->actingAs($owner)->postJson(
+        "/api/v1/workspaces/{$workspace->id}/projects/{$project->id}/tasks",
+        ['title' => 'Ship it', 'assignee_id' => $member->id]
+    )->assertCreated();
+
+    $response = $this->actingAs($member)->getJson('/api/v1/notifications?page=99');
+
+    $response->assertOk();
+    $response->assertJsonCount(0, 'data');
+});
+
 test('a guest cannot access notification endpoints', function () {
     $this->getJson('/api/v1/notifications')->assertUnauthorized();
     $this->getJson('/api/v1/notifications/unread-count')->assertUnauthorized();

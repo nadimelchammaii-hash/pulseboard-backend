@@ -60,6 +60,15 @@ test('a project member can create a task with an explicit status, priority, and 
     $response->assertJsonPath('data.assignee.id', $member->id);
 });
 
+test('a task description over 10000 characters fails validation', function () {
+    ['member' => $member, 'workspace' => $workspace, 'project' => $project] = projectWithOwnerAndMember();
+
+    $this->actingAs($member)->postJson(
+        "/api/v1/workspaces/{$workspace->id}/projects/{$project->id}/tasks",
+        ['title' => 'Too much detail', 'description' => str_repeat('a', 10001)]
+    )->assertUnprocessable()->assertJsonValidationErrors('description');
+});
+
 test('assigning a task to someone who is not a project member fails validation', function () {
     ['member' => $member, 'workspace' => $workspace, 'project' => $project] = projectWithOwnerAndMember();
     $outsider = User::factory()->create();

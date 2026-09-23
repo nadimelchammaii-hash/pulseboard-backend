@@ -104,6 +104,25 @@ test('only the owner can delete the workspace', function () {
     $this->assertDatabaseMissing('workspaces', ['id' => $workspace->id]);
 });
 
+test('deleting a workspace cascades to its members, projects, and activity log', function () {
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create();
+    $membership = $workspace->members()->create(['user_id' => $owner->id, 'role' => WorkspaceRole::Owner]);
+    $project = $workspace->projects()->create(['name' => 'Doomed', 'slug' => 'doomed']);
+    $project->members()->create(['user_id' => $owner->id]);
+
+    $this->actingAs($owner)->postJson(
+        "/api/v1/workspaces/{$workspace->id}/projects/{$project->id}/tasks",
+        ['title' => 'Leaves an activity behind']
+    )->assertCreated();
+
+    $this->actingAs($owner)->deleteJson("/api/v1/workspaces/{$workspace->id}")->assertNoContent();
+
+    $this->assertDatabaseMissing('workspace_members', ['id' => $membership->id]);
+    $this->assertDatabaseMissing('projects', ['id' => $project->id]);
+    $this->assertDatabaseMissing('activities', ['workspace_id' => $workspace->id]);
+});
+
 test('a guest cannot access any workspace endpoint', function () {
     $workspace = Workspace::factory()->create();
 

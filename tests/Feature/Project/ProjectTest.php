@@ -136,6 +136,24 @@ test('a workspace admin can rename or delete a project, a plain project member c
     $this->assertDatabaseMissing('projects', ['id' => $project->id]);
 });
 
+test('deleting a project cascades to its tasks and comments', function () {
+    $owner = User::factory()->create();
+    $workspace = workspaceWithRole($owner, WorkspaceRole::Owner);
+    $project = $workspace->projects()->create(['name' => 'Doomed', 'slug' => 'doomed']);
+    $project->members()->create(['user_id' => $owner->id]);
+    $task = $project->tasks()->create([
+        'title' => 'Orphan me', 'status' => 'todo', 'priority' => 'medium', 'position' => 0, 'created_by' => $owner->id,
+    ]);
+    $comment = $task->comments()->create(['user_id' => $owner->id, 'body' => 'Doomed comment']);
+
+    $this->actingAs($owner)
+        ->deleteJson("/api/v1/workspaces/{$workspace->id}/projects/{$project->id}")
+        ->assertNoContent();
+
+    $this->assertDatabaseMissing('tasks', ['id' => $task->id]);
+    $this->assertDatabaseMissing('task_comments', ['id' => $comment->id]);
+});
+
 test('a guest cannot access any project endpoint', function () {
     $workspace = Workspace::factory()->create();
     $project = Project::factory()->for($workspace)->create();

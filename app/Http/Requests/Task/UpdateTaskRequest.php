@@ -20,7 +20,7 @@ class UpdateTaskRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', 'max:10000'],
             'priority' => ['nullable', Rule::in(array_column(TaskPriority::cases(), 'value'))],
             'assignee_id' => ['nullable', 'integer', 'exists:users,id'],
             'due_date' => ['nullable', 'date'],

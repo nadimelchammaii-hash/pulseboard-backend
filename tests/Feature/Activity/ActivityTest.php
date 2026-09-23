@@ -224,6 +224,20 @@ test('a plain workspace member only sees activity for projects they belong to', 
     $ownerResponse->assertJsonCount(1, 'data');
 });
 
+test('a page beyond the last one returns an empty list, not an error', function () {
+    ['member' => $member, 'workspace' => $workspace, 'project' => $project] = workspaceWithOwnerAndMember();
+
+    $this->actingAs($member)->postJson(
+        "/api/v1/workspaces/{$workspace->id}/projects/{$project->id}/tasks",
+        ['title' => 'Only task']
+    )->assertCreated();
+
+    $response = $this->actingAs($member)->getJson("/api/v1/workspaces/{$workspace->id}/activities?page=99");
+
+    $response->assertOk();
+    $response->assertJsonCount(0, 'data');
+});
+
 test('a guest cannot access the activity feed', function () {
     $workspace = Workspace::factory()->create();
 

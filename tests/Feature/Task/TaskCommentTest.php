@@ -61,6 +61,15 @@ test('a comment author can delete their own comment', function () {
     $this->assertDatabaseMissing('task_comments', ['id' => $comment->id]);
 });
 
+test('a comment body over 5000 characters fails validation', function () {
+    ['member' => $member, 'workspace' => $workspace, 'project' => $project, 'task' => $task] = projectForCommentTests();
+
+    $this->actingAs($member)->postJson(
+        "/api/v1/workspaces/{$workspace->id}/projects/{$project->id}/tasks/{$task->id}/comments",
+        ['body' => str_repeat('a', 5001)]
+    )->assertUnprocessable()->assertJsonValidationErrors('body');
+});
+
 test('a workspace owner can moderate-delete someone else\'s comment', function () {
     ['owner' => $owner, 'member' => $member, 'workspace' => $workspace, 'project' => $project, 'task' => $task] = projectForCommentTests();
     $comment = $task->comments()->create(['user_id' => $member->id, 'body' => 'Member comment']);
