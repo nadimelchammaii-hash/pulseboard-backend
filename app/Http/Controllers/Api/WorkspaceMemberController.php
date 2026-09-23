@@ -16,6 +16,7 @@ use App\Models\WorkspaceMember;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -27,9 +28,16 @@ class WorkspaceMemberController extends Controller
 
         $this->authorize('view', $workspace);
 
-        return WorkspaceMemberResource::collection(
-            $workspace->members()->with('user')->get()
+        // The member list is read on nearly every workspace page but only changes on
+        // invite/role-change/removal, so it's cached and explicitly invalidated below
+        // rather than re-querying the members+users join on every request.
+        $members = Cache::remember(
+            self::membersCacheKey($workspace),
+            now()->addMinutes(10),
+            fn () => $workspace->members()->with('user')->get()
         );
+
+        return WorkspaceMemberResource::collection($members);
     }
 
     public function store(InviteMemberRequest $request, Workspace $workspace): JsonResponse
@@ -52,6 +60,8 @@ class WorkspaceMemberController extends Controller
             'user_id' => $invitedUser->id,
             'role' => $role,
         ]);
+
+        Cache::forget(self::membersCacheKey($workspace));
 
         event(new WorkspaceMemberInvited($workspace, $request->user(), $invitedUser, $role));
 
@@ -86,6 +96,8 @@ class WorkspaceMemberController extends Controller
             $member->update(['role' => $newRole]);
         }
 
+        Cache::forget(self::membersCacheKey($workspace));
+
         if ($oldRole !== $newRole) {
             event(new WorkspaceMemberRoleChanged($workspace, $request->user(), $member->user, $oldRole, $newRole));
         }
@@ -103,8 +115,15 @@ class WorkspaceMemberController extends Controller
         $removedUser = $member->user;
         $member->delete();
 
+        Cache::forget(self::membersCacheKey($workspace));
+
         event(new WorkspaceMemberRemoved($workspace, $request->user(), $removedUser));
 
         return response()->noContent();
+    }
+
+    private static function membersCacheKey(Workspace $workspace): string
+    {
+        return "workspace:{$workspace->id}:members";
     }
 }

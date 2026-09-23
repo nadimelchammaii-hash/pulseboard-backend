@@ -40,12 +40,12 @@ class WorkspaceInvitationNotification extends Notification
 
     public function toBroadcast(object $notifiable): BroadcastMessage
     {
-        return (new BroadcastMessage([
+        return new BroadcastMessage([
             'id' => $this->id,
             'category' => 'system',
             'data' => $this->toDatabase($notifiable),
             'read_at' => null,
             'created_at' => now()->toISOString(),
-        ]))->onConnection('sync');
+        ]);
     }
 }

@@ -12,10 +12,10 @@ use App\Models\User;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Support\Str;
 
-class TaskCommentAdded implements ActivityLoggable, ShouldBroadcastNow
+class TaskCommentAdded implements ActivityLoggable, ShouldBroadcast
 {
     use InteractsWithSockets;
 
