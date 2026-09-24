@@ -60,3 +60,34 @@ jobs:
 
       - name: Pest (tests)
         run: php artisan test
+
+  # Proves the Dockerfile still builds and the image has what the app needs, so a
+  # broken image is caught on the PR rather than at the next `docker compose build`.
+  # Nothing is pushed anywhere.
+  docker-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: pulseboard-backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # A successful build doesn't prove the PHP extensions compiled in or that
+      # Composer produced an autoloader, so check both, plus the FPM config.
+      - name: Smoke test image
+        run: |
+          docker run --rm pulseboard-backend:ci sh -c '
+            php -r "foreach ([\"pdo_mysql\", \"mbstring\", \"exif\", \"pcntl\", \"bcmath\", \"gd\", \"zip\"] as \$e) { if (!extension_loaded(\$e)) { fwrite(STDERR, \"missing extension: \$e\n\"); exit(1); } } echo \"extensions ok\n\";" &&
+            test -f vendor/autoload.php && echo "autoloader ok" &&
+            php-fpm -t'
