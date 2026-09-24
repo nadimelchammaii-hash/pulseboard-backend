@@ -15,6 +15,16 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
+
+        // Behind the Caddy/nginx proxies, PHP only sees the proxy's IP as the client.
+        // Without trusting X-Forwarded-For, every visitor would share one IP — and one
+        // rate-limit bucket. Opt-in via env (set to "*" in production, where only the
+        // proxy can reach the app) so a directly exposed dev server never trusts a
+        // client-supplied header. Read from the real process env, not a config file,
+        // because this runs before config is loaded.
+        if ($proxies = env('TRUSTED_PROXIES')) {
+            $middleware->trustProxies(at: $proxies === '*' ? '*' : explode(',', $proxies));
+        }
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

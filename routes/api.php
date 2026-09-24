@@ -15,8 +15,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 
-require __DIR__.'/channels.php';
-
 Route::middleware('throttle:api')->group(function () {
 
     Route::post('/register', [AuthController::class, 'register']);
