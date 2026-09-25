@@ -1,0 +1,42 @@
+# Production image. The dev Dockerfile stays as-is for `docker compose` local work
+# (source is bind-mounted there); this one bakes the code in and runs unprivileged.
+FROM php:8.4-fpm
+
+RUN apt-get update && apt-get install -y \
+        git \
+        unzip \
+        libzip-dev \
+        libpng-dev \
+        libonig-dev \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip opcache \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+COPY docker/php/production.ini "$PHP_INI_DIR/conf.d/zz-production.ini"
+
+WORKDIR /var/www/html
+
+# Dependencies first so this layer is cached until composer.lock changes.
+# --no-scripts because `package:discover` boots the app and needs runtime env;
+# the entrypoint runs it at container start instead.
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-scripts --no-interaction --prefer-dist --optimize-autoloader
+
+COPY . .
+RUN composer dump-autoload --optimize --no-dev \
+    && mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache
+
+# The sed strips Windows CRLF line endings, which would otherwise make the shebang
+# fail ("no such file or directory") when the repo was checked out on Windows.
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh && chmod +x /usr/local/bin/entrypoint.sh
+
+# Runs php-fpm, queue:work and reverb:start all as an unprivileged user.
+USER www-data
+
+EXPOSE 9000
+ENTRYPOINT ["entrypoint.sh"]
+CMD ["php-fpm"]

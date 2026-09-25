@@ -24,6 +24,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Registered here, not from a routes file: production runs `route:cache`, after
+        // which routes/*.php are never executed and the callbacks would vanish (every
+        // private channel then answers 403). Providers boot on every request.
+        require base_path('routes/channels.php');
+
         ResetPassword::createUrlUsing(function ($notifiable, string $token): string {
             $query = http_build_query([
                 'token' => $token,
