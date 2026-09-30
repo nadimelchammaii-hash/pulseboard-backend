@@ -80,8 +80,8 @@ jobs:
           push: false
           load: true
           tags: pulseboard-backend:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=dev
+          cache-to: type=gha,mode=max,scope=dev
 
       # A successful build doesn't prove the PHP extensions compiled in or that
       # Composer produced an autoloader, so check both, plus the FPM config.
@@ -89,5 +89,29 @@ jobs:
         run: |
           docker run --rm pulseboard-backend:ci sh -c '
             php -r "foreach ([\"pdo_mysql\", \"mbstring\", \"exif\", \"pcntl\", \"bcmath\", \"gd\", \"zip\"] as \$e) { if (!extension_loaded(\$e)) { fwrite(STDERR, \"missing extension: \$e\n\"); exit(1); } } echo \"extensions ok\n\";" &&
+            test -f vendor/autoload.php && echo "autoloader ok" &&
+            php-fpm -t'
+
+      # The image actually used in production (Step 5a) - built separately so a
+      # regression there is caught on the PR, not at the next real deploy.
+      - name: Build production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.prod
+          push: false
+          load: true
+          tags: pulseboard-backend:prod-ci
+          cache-from: type=gha,scope=prod
+          cache-to: type=gha,mode=max,scope=prod
+
+      # --entrypoint sh bypasses docker/entrypoint.sh on purpose: that script runs
+      # `artisan config:cache` etc., which need a real APP_KEY/DB that don't exist
+      # here. This checks the image itself, the same way the dev image's smoke test
+      # above does - not whether the app boots against a real environment.
+      - name: Smoke test production image
+        run: |
+          docker run --rm --entrypoint sh pulseboard-backend:prod-ci -c '
+            php -r "foreach ([\"pdo_mysql\", \"mbstring\", \"exif\", \"pcntl\", \"bcmath\", \"gd\", \"zip\", \"opcache\"] as \$e) { if (!extension_loaded(\$e)) { fwrite(STDERR, \"missing extension: \$e\n\"); exit(1); } } echo \"extensions ok\n\";" &&
             test -f vendor/autoload.php && echo "autoloader ok" &&
             php-fpm -t'
