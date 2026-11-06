@@ -7,6 +7,8 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskComment;
 use App\Models\User;
+use App\Support\DemoLimits;
+use Illuminate\Auth\Access\Response;
 
 class TaskPolicy
 {
@@ -29,9 +31,13 @@ class TaskPolicy
     /**
      * Determine whether the user can create a task in the project.
      */
-    public function create(User $user, Project $project): bool
+    public function create(User $user, Project $project): Response|bool
     {
-        return $project->isAccessibleBy($user);
+        if (! $project->isAccessibleBy($user)) {
+            return false;
+        }
+
+        return DemoLimits::newTask($user) ?? true;
     }
 
     /**
@@ -53,9 +59,13 @@ class TaskPolicy
     /**
      * Determine whether the user can comment on the task.
      */
-    public function addComment(User $user, Task $task): bool
+    public function addComment(User $user, Task $task): Response|bool
     {
-        return $task->project->isAccessibleBy($user);
+        if (! $task->project->isAccessibleBy($user)) {
+            return false;
+        }
+
+        return DemoLimits::newComment($user) ?? true;
     }
 
     /**

@@ -7,15 +7,21 @@ use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\DemoLimits;
+use Illuminate\Auth\Access\Response;
 
 class ProjectPolicy
 {
     /**
      * Determine whether the user can create a project in the workspace.
      */
-    public function create(User $user, Workspace $workspace): bool
+    public function create(User $user, Workspace $workspace): Response|bool
     {
-        return $this->isWorkspaceManager($user, $workspace);
+        if (! $this->isWorkspaceManager($user, $workspace)) {
+            return false;
+        }
+
+        return DemoLimits::newProject($user, $workspace) ?? true;
     }
 
     /**

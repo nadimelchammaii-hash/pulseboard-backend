@@ -30,7 +30,17 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'demo_expires_at' => 'datetime',
         ];
+    }
+
+    /**
+     * A temporary "Try the demo" account: the visitor or one of their fictional
+     * teammates. Deleted by demo:prune once demo_expires_at has passed.
+     */
+    public function isDemo(): bool
+    {
+        return $this->demo_expires_at !== null;
     }
 
     public function workspaces(): BelongsToMany

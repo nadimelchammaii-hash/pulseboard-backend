@@ -19,7 +19,11 @@ class PasswordResetController extends Controller
         // Always respond the same way regardless of whether the email is
         // registered, throttled, or invalid — the response must not let a
         // caller enumerate which emails have an account.
-        Password::sendResetLink($request->validated());
+        // Demo accounts use ".invalid" addresses, which can never receive email:
+        // sending would only produce bounces at the mail provider.
+        if (! Str::endsWith(Str::lower((string) $request->validated('email')), '.invalid')) {
+            Password::sendResetLink($request->validated());
+        }
 
         return response()->json([
             'message' => 'If an account exists for that email, password reset instructions have been sent.',

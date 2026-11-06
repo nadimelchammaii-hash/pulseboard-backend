@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ActivityController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\DemoController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\ProfileController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\Api\TaskCommentController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\WorkspaceController;
 use App\Http\Controllers\Api\WorkspaceMemberController;
+use App\Http\Middleware\RejectDemoAccounts;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
@@ -19,6 +21,7 @@ Route::middleware('throttle:api')->group(function () {
 
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+    Route::post('/demo', DemoController::class)->middleware('throttle:demo');
     Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink']);
     Route::post('/reset-password', [PasswordResetController::class, 'reset']);
 
@@ -28,8 +31,8 @@ Route::middleware('throttle:api')->group(function () {
         Route::post('/broadcasting/auth', fn (Request $request) => Broadcast::auth($request));
 
         Route::get('/user', [ProfileController::class, 'show']);
-        Route::put('/user/profile', [ProfileController::class, 'update']);
-        Route::put('/user/password', [ProfileController::class, 'updatePassword']);
+        Route::put('/user/profile', [ProfileController::class, 'update'])->middleware(RejectDemoAccounts::class);
+        Route::put('/user/password', [ProfileController::class, 'updatePassword'])->middleware(RejectDemoAccounts::class);
 
         Route::get('/notifications', [NotificationController::class, 'index']);
         Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);

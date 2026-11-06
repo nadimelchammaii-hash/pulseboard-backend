@@ -50,5 +50,21 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('login', function (Request $request) {
             return Limit::perMinute(5)->by(Str::lower((string) $request->input('email')).'|'.$request->ip());
         });
+
+        // "Try the demo": a few new demos per visitor per hour, and a cap for the whole
+        // site per day, so scripted clicks cannot fill the database. Both answer with a
+        // message written for the visitor, which the login page shows as is.
+        RateLimiter::for('demo', function (Request $request) {
+            return [
+                Limit::perHour((int) config('demo.starts_per_hour'))->by('ip:'.$request->ip())
+                    ->response(fn (Request $request, array $headers) => response()->json([
+                        'message' => 'Several demos were started from your network recently. Please try again in an hour.',
+                    ], 429, $headers)),
+                Limit::perDay((int) config('demo.starts_per_day'))->by('site')
+                    ->response(fn (Request $request, array $headers) => response()->json([
+                        'message' => 'The demo is very busy today. Please try again tomorrow.',
+                    ], 503, $headers)),
+            ];
+        });
     }
 }

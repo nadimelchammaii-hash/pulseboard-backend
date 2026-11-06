@@ -6,6 +6,8 @@ use App\Enums\WorkspaceRole;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceMember;
+use App\Support\DemoLimits;
+use Illuminate\Auth\Access\Response;
 
 class WorkspacePolicy
 {
@@ -20,9 +22,9 @@ class WorkspacePolicy
     /**
      * Determine whether the user can create workspaces.
      */
-    public function create(User $user): bool
+    public function create(User $user): Response|bool
     {
-        return true;
+        return DemoLimits::newWorkspace($user) ?? true;
     }
 
     /**
@@ -43,9 +45,16 @@ class WorkspacePolicy
 
     /**
      * Determine whether the user can invite a new member to the workspace.
+     *
+     * Never from a demo account: its workspace is private to one visitor, and its
+     * teammates are fictional (InviteMemberRequest stops the reverse direction).
      */
-    public function inviteMember(User $user, Workspace $workspace): bool
+    public function inviteMember(User $user, Workspace $workspace): Response|bool
     {
+        if ($user->isDemo()) {
+            return Response::deny('Inviting people is turned off in the demo. Create your own account to invite your team.');
+        }
+
         return in_array($workspace->roleFor($user), [WorkspaceRole::Owner, WorkspaceRole::Admin], true);
     }
 
