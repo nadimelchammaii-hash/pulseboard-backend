@@ -32,5 +32,12 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <!-- The SPA address the tests sign in from (tests/TestCase.php sends this Referer),
+             set over the dev container's own address. Laravel reads $_SERVER first, which
+             only <server> overwrites; force="true" covers getenv() and $_ENV. -->
+        <env name="SANCTUM_STATEFUL_DOMAINS" value="localhost:3000" force="true"/>
+        <env name="FRONTEND_URL" value="http://localhost:3000" force="true"/>
+        <server name="SANCTUM_STATEFUL_DOMAINS" value="localhost:3000"/>
+        <server name="FRONTEND_URL" value="http://localhost:3000"/>
     </php>
 </phpunit>
