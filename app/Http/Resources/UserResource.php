@@ -15,7 +15,8 @@ class UserResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'email' => $this->email,
+            // Demo accounts show a clean address instead of their unique stored one.
+            'email' => $this->displayEmail(),
             'email_verified_at' => $this->email_verified_at,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

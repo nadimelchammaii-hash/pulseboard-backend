@@ -24,6 +24,10 @@ class DemoController extends Controller
 
         $request->session()->regenerate();
 
-        return UserResource::make($user)->response()->setStatusCode(Response::HTTP_CREATED);
+        // meta.landing: the sample board the SPA opens straight away.
+        return UserResource::make($user)
+            ->additional(['meta' => ['landing' => $startDemo->landing()]])
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
     }
 }

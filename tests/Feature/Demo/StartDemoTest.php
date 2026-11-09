@@ -87,6 +87,33 @@ describe('starting a demo', function () {
         expect(Task::count())->toBe(18)->and(TaskComment::count())->toBe(6);
     });
 
+    it('tells the SPA to open the sample "Mobile App Launch" board', function () {
+        $response = startDemo()->assertCreated();
+
+        $project = Project::query()->where('name', 'Mobile App Launch')->sole();
+        $response->assertJsonPath('meta.landing', [
+            'workspace_id' => $project->workspace_id,
+            'project_id' => $project->id,
+        ]);
+    });
+
+    it('shows demo accounts with clean email addresses, keeping the unique ones stored', function () {
+        startDemo()->assertCreated();
+        $workspaceId = Workspace::query()->sole()->id;
+
+        $this->getJson('/api/v1/user')->assertJsonPath('data.email', 'visitor@lumenlabs.demo');
+
+        $members = collect($this->getJson("/api/v1/workspaces/{$workspaceId}/members")->assertOk()->json('data'));
+        expect($members->pluck('user.email')->sort()->values()->all())->toBe([
+            'maya@lumenlabs.demo',
+            'priya@lumenlabs.demo',
+            'sam@lumenlabs.demo',
+            'visitor@lumenlabs.demo',
+        ]);
+
+        expect(User::query()->where('name', 'Sam Rivera')->sole()->email)->toMatch('/^sam-[0-9a-z]{26}@demo\.pulseboardapp\.invalid$/');
+    });
+
     it('shows project-level permissions: a member only sees the projects they are on', function () {
         startDemo()->assertCreated();
         $workspaceId = Workspace::query()->sole()->id;
@@ -180,4 +207,11 @@ it('reports a normal account as not a demo', function () {
     $this->actingAs($user)->getJson('/api/v1/user')->assertOk()
         ->assertJsonPath('data.is_demo', false)
         ->assertJsonPath('data.demo_expires_at', null);
+});
+
+it('shows a normal account its real email address, even one shaped like a demo address', function () {
+    $user = User::factory()->create(['email' => 'sam-rivera@example.com']);
+
+    $this->actingAs($user)->getJson('/api/v1/user')->assertOk()
+        ->assertJsonPath('data.email', 'sam-rivera@example.com');
 });

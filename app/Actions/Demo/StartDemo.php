@@ -49,6 +49,9 @@ class StartDemo
 {
     public const VISITOR_NAME = 'Demo Visitor';
 
+    /** The board a visitor lands on after starting a demo. */
+    public const LANDING_PROJECT = 'Mobile App Launch';
+
     private CarbonImmutable $now;
 
     /** @var array<string, User> */
@@ -56,6 +59,8 @@ class StartDemo
 
     /** @var array<string, Task> */
     private array $tasks = [];
+
+    private ?Project $landingProject = null;
 
     public function handle(): User
     {
@@ -66,6 +71,24 @@ class StartDemo
         $this->now = CarbonImmutable::now();
 
         return DB::transaction(fn (): User => $this->build());
+    }
+
+    /**
+     * Where the visitor of the demo just built should land: the sample board.
+     * Call after handle().
+     *
+     * @return array{workspace_id: int, project_id: int}
+     */
+    public function landing(): array
+    {
+        if ($this->landingProject === null) {
+            throw new \LogicException('Start a demo before asking where it lands.');
+        }
+
+        return [
+            'workspace_id' => $this->landingProject->workspace_id,
+            'project_id' => $this->landingProject->id,
+        ];
     }
 
     private function build(): User
@@ -139,6 +162,10 @@ class StartDemo
         }
 
         $this->logActivity(new ProjectCreated($project, $creator), $createdAt);
+
+        if ($project->name === self::LANDING_PROJECT) {
+            $this->landingProject = $project;
+        }
 
         // Positions count from 0 within each column, in the order listed.
         $positions = [];

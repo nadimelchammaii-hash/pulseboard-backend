@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'password'])]
@@ -41,6 +42,22 @@ class User extends Authenticatable
     public function isDemo(): bool
     {
         return $this->demo_expires_at !== null;
+    }
+
+    /**
+     * The address shown in the app. A demo account's stored address carries a
+     * unique token ("sam-01m6...@demo.pulseboardapp.invalid"); it is shown as
+     * "sam@lumenlabs.demo". Other accounts show their real address.
+     */
+    public function displayEmail(): string
+    {
+        if (! $this->isDemo()) {
+            return $this->email;
+        }
+
+        $handle = Str::before(Str::before($this->email, '@'), '-');
+
+        return $handle.'@'.config('demo.display_email_domain');
     }
 
     public function workspaces(): BelongsToMany

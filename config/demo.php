@@ -21,6 +21,11 @@ return [
     // ".invalid" is reserved: it can never receive email.
     'email_domain' => 'demo.pulseboardapp.invalid',
 
+    // What the app shows instead of those unique addresses (sam@lumenlabs.demo), so
+    // the members list and assignee pickers read cleanly. Display only: demo
+    // accounts are only ever seen by the visitor who owns that demo.
+    'display_email_domain' => 'lumenlabs.demo',
+
     'lifetime_hours' => (int) env('DEMO_LIFETIME_HOURS', 24),
 
     // New demos per visitor IP address per hour, and for the whole site per day.
